@@ -115,5 +115,6 @@ resid <- ob2$Latency - y[,1]
 # plot(resid)
 
 summary(model)
+
 ```
 
