@@ -1,0 +1,119 @@
+---
+title: "ADS_Logrithmic_Regression"
+author: "Graeme Newton"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r, message = FALSE, echo = FALSE}
+# Install Packages
+package_list <- c("pacman",
+                  "dplyr",
+                  "reshape2",
+                  "plotly",
+                  "here",
+                  "data.table",
+                  "R.utils",
+                  "tictoc",
+                  "stringr",
+                  "htmlwidgets",
+                  "equatiomatic"
+                  )
+
+new_packages <- package_list[!(package_list %in% installed.packages()[, "Package"])]
+if (length(new_packages)) {
+  install.packages(new_packages)
+}
+
+eval(parse(text = paste("library(", package_list, ")")))
+
+cat("Packages required: \n", sprintf("%s\n", package_list))
+
+rm(new_packages, package_list)
+
+
+```
+
+
+```{r}
+
+ads <- fread(here("20230214-file1018fibre1.txt"))
+head(ads)
+  
+```
+
+Tidy up
+```{r}
+
+ads$Stimulus_number <- ads$Stimulus_number - ads$Stimulus_number[1]
+colnames(ads)[c(3,4)] <- c("Latency", "Timestamp")
+head(ads)
+
+```
+
+```{r}
+
+ads_plot <-
+  plot_ly(type = "scatter", mode = "lines+markers") %>%
+  
+  add_trace(
+    x = ads$Stimulus_number,
+    y = ads$Latency,
+    mode = "markers",
+    hovertemplate = paste(
+      "<i>Stimulus Number = </i>", ads$Stimulus_number,
+      "<br><i>Latency = </i>", round(ads$Latency, 3), "ms",
+      "<br><i>Timestamp = </i>", round(ads$Timestamp/1000, 3), "s",
+      "<extra></extra>"
+    )
+  ) %>%
+  
+  layout(
+    xaxis = list(title = list(text = "<b>Stimulus Number</b>")),
+    yaxis = list(
+      title = list(text = "<b>Latency (ms)</b>")
+    ),
+    showlegend = FALSE
+  )
+
+ads_plot
+
+```
+
+extract obreja 2
+```{r}
+
+ob2 <- ads[c(which(ads$Stimulus_number == 979):which(ads$Stimulus_number == 1320)), ] #1320 is last AP before it drops out at 2Hz
+#zero stim number
+ob2$Stimulus_number <- ob2$Stimulus_number - (ob2$Stimulus_number[1]-1)
+ob2$Latency <- ((ob2$Latency/ob2$Latency[1])*100)-100 #convert to % baseline
+head(ob2)
+
+```
+
+```{r}
+polynomial_x <- stats::poly(ob2$Stimulus_number, degree = 2)
+
+model <- lm(ob2$Latency ~ polynomial_x)
+y <- predict(model, newdata = list(ob2$Stimulus_number), interval="confidence")
+
+plot(ob2$Stimulus_number, ob2$Latency, type = "l")
+lines(y[,1], col = "red")
+summary(model)$adj.r.squared
+summary(model)
+extract_eq(model)
+extract_eq(model, use_coefs = TRUE)
+resid <- ob2$Latency - y[,1]
+# qqnorm(ob2$Latency)
+# qqline(ob2$Latency)
+# shapiro.test(ob2$Latency)
+# plot(resid)
+
+summary(model)
+```
+
